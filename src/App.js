@@ -236,20 +236,6 @@ function App() {
     (entry) => entry.number.length === 3 && entry.number !== ""
   );
 
-  // รวมข้อมูลตัวเลขซ้ำ
-  // const groupedData = {};
-  // savedEntries.forEach((entry) => {
-  //   const nums = entry.number.split(",").map((n) => n.trim());
-  //   const amount = entry.double ? Number(entry.price) * 2 : Number(entry.price);
-  //   nums.forEach((num) => {
-  //     if (!groupedData[num]) groupedData[num] = 0;
-  //     groupedData[num] += amount;
-  //   });
-  // });
-
-  // const filteredData = Object.entries(groupedData).filter(([num]) =>
-  //   num.includes(filterText.trim())
-  // );
 
   const groupedDataI = {};
 
@@ -283,24 +269,26 @@ function App() {
 
   const groupedData = {};
 
-  savedEntries.forEach((entry) => {
-    const nums = entry.number.split(",").map((n) => n.trim());
-    const amount = entry.double ? Number(entry.price) * 2 : Number(entry.price);
+savedEntries.forEach((entry) => {
+  // ข้าม entry ที่ selected = "double" หรือ "doubleIII"
+  if (entry.selected === "double" || entry.selected === "doubleIII") return;
 
-    nums.forEach((num) => {
-      const key = `${num}-${entry.selected}`; // ใช้ทั้งเลขและ selected เป็น key
-      if (!groupedData[key]) {
-        groupedData[key] = { number: num, amount: 0, selected: entry.selected };
-      }
-      groupedData[key].amount += amount;
-    });
+  const nums = entry.number.split(",").map((n) => n.trim());
+  const amount = entry.double ? Number(entry.price) * 2 : Number(entry.price);
+
+  nums.forEach((num) => {
+    const key = `${num}-${entry.selected}`; // ใช้ทั้งเลขและ selected เป็น key
+    if (!groupedData[key]) {
+      groupedData[key] = { number: num, amount: 0, selected: entry.selected };
+    }
+    groupedData[key].amount += amount;
   });
-  const filteredData = Object.entries(groupedData)
-    .filter(([num]) => num.includes(filterText.trim()))
-    .map(([num, data]) => ({ number: num, ...data }));
+});
 
-  // แปลงเป็น array แล้วกรองตามเลขที่ต้องการ
-  // const filteredData = Object.values(groupedData);
+const filteredData = Object.entries(groupedData)
+  .filter(([num]) => num.includes(filterText.trim()))
+  .map(([num, data]) => ({ number: num, ...data }));
+
 
   if (isLoadScreen) {
     return (
@@ -652,21 +640,7 @@ function App() {
                   className="list-group-item d-flex justify-content-between align-items-center"
                 >
                   <span>{number}</span>
-                  <span>
-                    {number.length === 3
-                      ? selected === "doubleII"
-                        ? "ตรง"
-                        : selected === "doubleI"
-                        ? "โต๊ด"
-                        : "บน"
-                      : selected === "double"
-                      ? "บน/ล่าง"
-                      : selected === "doubleII"
-                      ? "ล่าง"
-                      : selected === "doubleI"
-                      ? "บน"
-                      : "บน"}
-                  </span>
+                  
                   <span className="fw-bold">{amount.toFixed(2)} บาท</span>
                 </li>
               ))}
