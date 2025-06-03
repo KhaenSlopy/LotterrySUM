@@ -16,6 +16,7 @@ import { IoListCircleOutline } from "react-icons/io5";
 import "./App.css"; // นำเข้าไฟล์ CSS ของคุณ
 import Swal from "sweetalert2";
 import logo from "./LOTTERRYLOGO.png"; // นำเข้าโลโก้
+import { TbSum } from "react-icons/tb";
 
 function App() {
   const [entries, setEntries] = useState([
@@ -24,6 +25,7 @@ function App() {
   const [view, setView] = useState("form"); // 'form' or 'list'
   const [savedEntries, setSavedEntries] = useState([]);
   const [filterText, setFilterText] = useState("");
+  const [filterTextI, setFilterTextI] = useState("");
   const [showDetailVisible, setShowDetailVisible] = useState(false);
   const entriesCollection = collection(db, "lotto");
   const [isLoading, setIsLoading] = useState(false);
@@ -88,16 +90,9 @@ function App() {
     fetchSavedEntries();
   }, []);
 
-  // const handleChange = (index, field, value) => {
-  //   const updated = [...entries];
-  //   updated[index][field] = field === "double" ? !updated[index][field] : value;
-  //   setEntries(updated);
-  // };
   const handleChange = (index, field, value) => {
     const updated = [...entries];
 
-    // ถ้า field เป็น 'selected' ให้เก็บค่า value เป็น string (เช่น "double", "doubleI", "doubleII")
-    // ถ้าเป็น field อื่น เช่น 'number' หรือ 'price' ก็เก็บค่าตาม input มาเลย
     updated[index][field] = value;
 
     setEntries(updated);
@@ -117,24 +112,6 @@ function App() {
     const updated = entries.filter((_, i) => i !== index);
     setEntries(updated);
   };
-
-  // const handleSubmit = async () => {
-  //   try {
-  //     setIsLoading(true);
-  //     for (const entry of entries) {
-  //       if (!entry.number || !entry.price) continue;
-  //       await addDoc(collection(db, "lotto"), entry);
-  //     }
-  //     Swal.fire("บันทึกสำเร็จ!", "บันทึกข้อมูลเรียบร้อยแล้ว", "success");
-
-  //     setEntries([{ number: "", price: "", double: false }]);
-  //     fetchSavedEntries();
-  //   } catch (e) {
-  //     Swal.fire("Error!", "เกิดข้อผิดพลาด", "error");
-
-  //     setIsLoading(false);
-  //   }
-  // };
 
   const handleSubmit = async () => {
     try {
@@ -252,7 +229,7 @@ function App() {
       console.error("❌ Error fetching entries:", error);
     }
   };
-   const allAre2Digit = entries.every(
+  const allAre2Digit = entries.every(
     (entry) => entry.number.length === 2 && entry.number !== ""
   );
   const allAre3Digit = entries.every(
@@ -273,6 +250,36 @@ function App() {
   // const filteredData = Object.entries(groupedData).filter(([num]) =>
   //   num.includes(filterText.trim())
   // );
+
+  const groupedDataI = {};
+
+  // รวม amount ตามเลขเดียวกัน และกรอง selected ไม่เอา double กับ doubleIII
+  savedEntries.forEach((entry) => {
+    if (entry.selected === "double" || entry.selected === "doubleIII") {
+      // ข้ามรายการนี้เลย
+      return;
+    }
+
+    const nums = entry.number.split(",").map((n) => n.trim());
+    const amount = entry.double ? Number(entry.price) * 2 : Number(entry.price);
+
+    nums.forEach((num) => {
+      if (!groupedDataI[num]) {
+        groupedDataI[num] = {
+          number: num,
+          amount: 0,
+          selected: entry.selected,
+        };
+      }
+      groupedDataI[num].amount += amount;
+    });
+  });
+
+  const filteredDataI = Object.values(groupedDataI).filter((item) =>
+    item.number.includes(filterTextI.trim())
+  );
+
+  // ------------------------------------------------------------------------------------
 
   const groupedData = {};
 
@@ -303,7 +310,7 @@ function App() {
       </div>
     );
   }
-  
+
   return (
     <>
       {isLoading && (
@@ -625,6 +632,47 @@ function App() {
             )}
           </>
         )}
+        {view === "amount" && (
+          <>
+            <div className="sticky-top bg-white py-2 px-3 shadow-sm z-3">
+              <h3 className="mb-3 text-center fw-bold">📊 ยอดรวม</h3>
+              <input
+                type="text"
+                className="form-control mb-3"
+                placeholder="ค้นหาเลข"
+                value={filterTextI}
+                onChange={(e) => setFilterTextI(e.target.value)}
+              />
+            </div>
+
+            <ul className="list-group mb-4">
+              {filteredDataI.map(({ number, amount, selected }, index) => (
+                <li
+                  key={`${number}-${index}`}
+                  className="list-group-item d-flex justify-content-between align-items-center"
+                >
+                  <span>{number}</span>
+                  <span>
+                    {number.length === 3
+                      ? selected === "doubleII"
+                        ? "ตรง"
+                        : selected === "doubleI"
+                        ? "โต๊ด"
+                        : "บน"
+                      : selected === "double"
+                      ? "บน/ล่าง"
+                      : selected === "doubleII"
+                      ? "ล่าง"
+                      : selected === "doubleI"
+                      ? "บน"
+                      : "บน"}
+                  </span>
+                  <span className="fw-bold">{amount.toFixed(2)} บาท</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
         {/* เมนูด้านล่าง */}
         <nav className="navbar fixed-bottom bg-white border-top shadow-sm">
@@ -650,6 +698,17 @@ function App() {
                 <IoListCircleOutline />
               </span>
               <small>รายการ</small>
+            </button>
+            <button
+              className={`btn d-flex flex-column align-items-center position-relative ${
+                view === "amount" ? "active-underline" : ""
+              }`}
+              onClick={() => setView("amount")}
+            >
+              <span className="fs-4">
+                <TbSum />
+              </span>
+              <small>ยอดรวม</small>
             </button>
           </div>
         </nav>
