@@ -15,6 +15,7 @@ import { IoAddCircleOutline } from "react-icons/io5";
 import { IoListCircleOutline } from "react-icons/io5";
 import "./App.css"; // นำเข้าไฟล์ CSS ของคุณ
 import Swal from "sweetalert2";
+import logo from "./LOTTERRYLOGO.png"; // นำเข้าโลโก้
 
 function App() {
   const [entries, setEntries] = useState([
@@ -188,7 +189,7 @@ function App() {
 if (isLoadScreen) {
     return (
       <div className="splash-screen">
-        <img src="/LOTTERRY-LOGO.png" alt="โลโก้" className="splash-logo" />
+        <img src={logo} alt="โลโก้" className="splash-logo" />
         <h1 className="splash-title">LOTTERRY SUMMARY</h1>
       </div>
     );
