@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/LotterrySUM/static/css/main.5a7a3ae6.css",
+    "main.js": "/LotterrySUM/static/js/main.d98e56ec.js",
+    "static/js/453.2482be6b.chunk.js": "/LotterrySUM/static/js/453.2482be6b.chunk.js",
+    "index.html": "/LotterrySUM/index.html",
+    "main.5a7a3ae6.css.map": "/LotterrySUM/static/css/main.5a7a3ae6.css.map",
+    "main.d98e56ec.js.map": "/LotterrySUM/static/js/main.d98e56ec.js.map",
+    "453.2482be6b.chunk.js.map": "/LotterrySUM/static/js/453.2482be6b.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.5a7a3ae6.css",
+    "static/js/main.d98e56ec.js"
+  ]
+}
