@@ -29,17 +29,36 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadScreen, setILoadScreen] = useState(true);
 
-
-    useEffect(() => {
+  useEffect(() => {
     // ให้ splash แสดง 3 วินาที
     const timer = setTimeout(() => setILoadScreen(false), 5000);
     return () => clearTimeout(timer);
   }, []);
   const exportToExcel = () => {
     // เตรียมข้อมูลในรูปแบบ array ของ object
-    const dataToExport = filteredData.map(([num, total]) => ({
-      เลข: num,
-      "จำนวนเงิน (บาท)": total.toFixed(2),
+    const dataToExport = filteredData.map(({ number, amount, selected }) => ({
+      เลข: number,
+      ประเภท:
+        number.length === 3
+          ? selected === "doubleI"
+            ? "ตรง"
+            : selected === "doubleII"
+            ? "โต๊ด"
+            : "ไม่ระบุ"
+          : selected === "double"
+          ? "บน/ล่าง"
+          : selected === "doubleI"
+          ? "บน"
+          : selected === "doubleII"
+          ? "ล่าง"
+          : selected === "doubleIII"
+          ? "ตรง/โต๊ด"
+          : selected === "doubleIIII"
+          ? "ตรง"
+          : selected === "doubleIIIII"
+          ? "โต๊ด"
+          : "ไม่ระบุ",
+      "จำนวนเงิน (บาท)": amount.toFixed(2),
     }));
 
     // สร้าง worksheet และ workbook
@@ -69,9 +88,18 @@ function App() {
     fetchSavedEntries();
   }, []);
 
+  // const handleChange = (index, field, value) => {
+  //   const updated = [...entries];
+  //   updated[index][field] = field === "double" ? !updated[index][field] : value;
+  //   setEntries(updated);
+  // };
   const handleChange = (index, field, value) => {
     const updated = [...entries];
-    updated[index][field] = field === "double" ? !updated[index][field] : value;
+
+    // ถ้า field เป็น 'selected' ให้เก็บค่า value เป็น string (เช่น "double", "doubleI", "doubleII")
+    // ถ้าเป็น field อื่น เช่น 'number' หรือ 'price' ก็เก็บค่าตาม input มาเลย
+    updated[index][field] = value;
+
     setEntries(updated);
   };
 
@@ -90,20 +118,73 @@ function App() {
     setEntries(updated);
   };
 
+  // const handleSubmit = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     for (const entry of entries) {
+  //       if (!entry.number || !entry.price) continue;
+  //       await addDoc(collection(db, "lotto"), entry);
+  //     }
+  //     Swal.fire("บันทึกสำเร็จ!", "บันทึกข้อมูลเรียบร้อยแล้ว", "success");
+
+  //     setEntries([{ number: "", price: "", double: false }]);
+  //     fetchSavedEntries();
+  //   } catch (e) {
+  //     Swal.fire("Error!", "เกิดข้อผิดพลาด", "error");
+
+  //     setIsLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async () => {
     try {
       setIsLoading(true);
+
       for (const entry of entries) {
         if (!entry.number || !entry.price) continue;
-        await addDoc(collection(db, "lotto"), entry);
-      }
-      Swal.fire("บันทึกสำเร็จ!", "บันทึกข้อมูลเรียบร้อยแล้ว", "success");
 
-      setEntries([{ number: "", price: "", double: false }]);
+        const priceNum = Number(entry.price);
+        const amount = entry.double ? priceNum * 2 : priceNum;
+
+        if (entry.selected === "double") {
+          // บันทึก 3 รายการ
+          const baseEntry = {
+            number: entry.number,
+            price: entry.price,
+            double: entry.double,
+          };
+
+          // 1. บันทึก selected: "double"
+          await addDoc(collection(db, "lotto"), {
+            ...baseEntry,
+            selected: "double",
+            amount,
+          });
+
+          // 2. บันทึก selected: "doubleI"
+          await addDoc(collection(db, "lotto"), {
+            ...baseEntry,
+            selected: "doubleI",
+            amount,
+          });
+
+          // 3. บันทึก selected: "doubleII"
+          await addDoc(collection(db, "lotto"), {
+            ...baseEntry,
+            selected: "doubleII",
+            amount,
+          });
+        } else {
+          // บันทึกปกติ selected: "doubleI" หรือ "doubleII"
+          await addDoc(collection(db, "lotto"), { ...entry, amount });
+        }
+      }
+
+      Swal.fire("บันทึกสำเร็จ!", "บันทึกข้อมูลเรียบร้อยแล้ว", "success");
+      setEntries([{ number: "", price: "", double: false, selected: "" }]);
       fetchSavedEntries();
     } catch (e) {
       Swal.fire("Error!", "เกิดข้อผิดพลาด", "error");
-
       setIsLoading(false);
     }
   };
@@ -171,22 +252,50 @@ function App() {
       console.error("❌ Error fetching entries:", error);
     }
   };
+   const allAre2Digit = entries.every(
+    (entry) => entry.number.length === 2 && entry.number !== ""
+  );
+  const allAre3Digit = entries.every(
+    (entry) => entry.number.length === 3 && entry.number !== ""
+  );
 
   // รวมข้อมูลตัวเลขซ้ำ
+  // const groupedData = {};
+  // savedEntries.forEach((entry) => {
+  //   const nums = entry.number.split(",").map((n) => n.trim());
+  //   const amount = entry.double ? Number(entry.price) * 2 : Number(entry.price);
+  //   nums.forEach((num) => {
+  //     if (!groupedData[num]) groupedData[num] = 0;
+  //     groupedData[num] += amount;
+  //   });
+  // });
+
+  // const filteredData = Object.entries(groupedData).filter(([num]) =>
+  //   num.includes(filterText.trim())
+  // );
+
   const groupedData = {};
+
   savedEntries.forEach((entry) => {
     const nums = entry.number.split(",").map((n) => n.trim());
     const amount = entry.double ? Number(entry.price) * 2 : Number(entry.price);
+
     nums.forEach((num) => {
-      if (!groupedData[num]) groupedData[num] = 0;
-      groupedData[num] += amount;
+      const key = `${num}-${entry.selected}`; // ใช้ทั้งเลขและ selected เป็น key
+      if (!groupedData[key]) {
+        groupedData[key] = { number: num, amount: 0, selected: entry.selected };
+      }
+      groupedData[key].amount += amount;
     });
   });
+  const filteredData = Object.entries(groupedData)
+    .filter(([num]) => num.includes(filterText.trim()))
+    .map(([num, data]) => ({ number: num, ...data }));
 
-  const filteredData = Object.entries(groupedData).filter(([num]) =>
-    num.includes(filterText.trim())
-  );
-if (isLoadScreen) {
+  // แปลงเป็น array แล้วกรองตามเลขที่ต้องการ
+  // const filteredData = Object.values(groupedData);
+
+  if (isLoadScreen) {
     return (
       <div className="splash-screen">
         <img src={logo} alt="โลโก้" className="splash-logo" />
@@ -194,174 +303,357 @@ if (isLoadScreen) {
       </div>
     );
   }
+  
   return (
     <>
-    {isLoading && (
+      {isLoading && (
         <div className="loader-container">
           <div className="spinner"></div>
           <p className="loading-text">🔄 กำลังโหลด...</p>
         </div>
       )}
-    <div className="container mt-4 mb-5" style={{ paddingBottom: "80px" }}>
-      
+      <div className="container mt-4 mb-5" style={{ paddingBottom: "80px" }}>
+        {view === "form" && (
+          <>
+            <div className="sticky-top bg-white py-2 px-3 shadow-sm z-3">
+              <h3 className="mb-3 text-center fw-bold">📋 เพิ่มรายการ</h3>
+              <button className="btn btn-success w-100" onClick={handleSubmit}>
+                💾 บันทึก
+              </button>
+            </div>
 
-      {view === "form" && (
-        <>
-          <div className="sticky-top bg-white py-2 px-3 shadow-sm z-3">
-            <h3 className="mb-3 text-center fw-bold">📋 เพิ่มรายการ</h3>
-            <button className="btn btn-success w-100" onClick={handleSubmit}>
-              💾 บันทึก
-            </button>
-          </div>
+            {entries.map((entry, index) => (
+              <div
+                className="row mb-3 bg-light p-2 rounded shadow-sm"
+                key={index}
+              >
+                <div className="col-5">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="ตัวเลข"
+                    value={entry.number}
+                    onChange={(e) =>
+                      handleChange(index, "number", e.target.value)
+                    }
+                  />
+                </div>
+                <div className="col-3">
+                  <input
+                    type="number"
+                    className="form-control"
+                    placeholder="ราคา"
+                    value={entry.price}
+                    onChange={(e) =>
+                      handleChange(index, "price", e.target.value)
+                    }
+                  />
+                </div>
+                {allAre3Digit && (
+                  <>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleIII"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleIII")
+                        }
+                      />
+                      <label className="form-check-label">ตรง/โต๊ด</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleIIII"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleIIII")
+                        }
+                      />
+                      <label className="form-check-label">ตรง</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleIIIII"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleIIIII")
+                        }
+                      />
+                      <label className="form-check-label">โต๊ด</label>
+                    </div>
+                  </>
+                )}
 
-          {entries.map((entry, index) => (
-            <div
-              className="row mb-3 bg-light p-2 rounded shadow-sm"
-              key={index}
-            >
-              <div className="col-5">
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="ตัวเลข"
-                  value={entry.number}
-                  onChange={(e) =>
-                    handleChange(index, "number", e.target.value)
-                  }
-                />
+                {allAre2Digit && (
+                  <>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "double"}
+                        onChange={() =>
+                          handleChange(index, "selected", "double")
+                        }
+                      />
+                      <label className="form-check-label">บน/ล่าง</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleI"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleI")
+                        }
+                      />
+                      <label className="form-check-label">บน</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleII"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleII")
+                        }
+                      />
+                      <label className="form-check-label">ล่าง</label>
+                    </div>
+                  </>
+                )}
+
+                {!allAre2Digit && !allAre3Digit && (
+                  <>
+                    {/* แสดง radio ทั้งหมด */}
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "double"}
+                        onChange={() =>
+                          handleChange(index, "selected", "double")
+                        }
+                      />
+                      <label className="form-check-label">บน/ล่าง</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleI"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleI")
+                        }
+                      />
+                      <label className="form-check-label">บน</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleII"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleII")
+                        }
+                      />
+                      <label className="form-check-label">ล่าง</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleIII"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleIII")
+                        }
+                      />
+                      <label className="form-check-label">ตรง/โต๊ด</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleIIII"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleIIII")
+                        }
+                      />
+                      <label className="form-check-label">ตรง</label>
+                    </div>
+                    <div className="col-3 d-flex align-items-center">
+                      <input
+                        type="radio"
+                        name={`doubleOption-${index}`}
+                        className="form-check-input me-2"
+                        checked={entry.selected === "doubleIIIII"}
+                        onChange={() =>
+                          handleChange(index, "selected", "doubleIIIII")
+                        }
+                      />
+                      <label className="form-check-label">โต๊ด</label>
+                    </div>
+                  </>
+                )}
+
+                <div className="col-1 d-flex align-items-center">
+                  <button
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={() => removeEntry(index)}
+                  >
+                    -
+                  </button>
+                </div>
               </div>
-              <div className="col-3">
-                <input
-                  type="number"
-                  className="form-control"
-                  placeholder="ราคา"
-                  value={entry.price}
-                  onChange={(e) => handleChange(index, "price", e.target.value)}
-                />
-              </div>
-              <div className="col-3 d-flex align-items-center">
-                <input
-                  type="checkbox"
-                  className="form-check-input me-2"
-                  checked={entry.double}
-                  onChange={() => handleChange(index, "double")}
-                />
-                <label className="form-check-label">บน/ล่าง</label>
-              </div>
-              <div className="col-1 d-flex align-items-center">
+            ))}
+
+            <div className="d-grid gap-2 mb-3">
+              <button className="btn btn-primary" onClick={addEntry}>
+                <IoAddCircleOutline /> เพิ่มรายการ
+              </button>
+            </div>
+          </>
+        )}
+
+        {view === "list" && (
+          <>
+            <div className="sticky-top bg-white py-2 px-3 shadow-sm z-3">
+              <h3 className="mb-3 text-center fw-bold">📊 รายการทั้งหมด</h3>
+              <input
+                type="text"
+                className="form-control mb-3"
+                placeholder="ค้นหาเลข"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+              />
+
+              <div className="d-flex justify-content-between mb-3">
                 <button
-                  className="btn btn-outline-danger btn-sm"
-                  onClick={() => removeEntry(index)}
+                  className="btn btn-warning"
+                  onClick={() => setShowDetailVisible(!showDetailVisible)}
                 >
-                  -
+                  <small>{showDetailVisible ? "ซ่อน" : "แก้ไข"}</small>
+                </button>
+
+                <button className="btn btn-success" onClick={exportToExcel}>
+                  <small>ส่งออก Excel</small>
+                </button>
+                <button className="btn btn-danger" onClick={handleDeleteAll}>
+                  <small>ลบทั้งหมด</small>
                 </button>
               </div>
             </div>
-          ))}
-          <div className="d-grid gap-2 mb-3">
-            <button className="btn btn-primary" onClick={addEntry}>
-              <IoAddCircleOutline /> เพิ่มรายการ
+
+            {!showDetailVisible && (
+              <ul className="list-group mb-4">
+                {filteredData.map(({ number, amount, selected }) => (
+                  <li
+                    key={`${number}-${selected}`}
+                    className="list-group-item d-flex justify-content-between align-items-center"
+                  >
+                    <span>{number}</span>
+                    <span>
+                      {number.length === 3
+                        ? selected === "doubleII"
+                          ? "ตรง"
+                          : selected === "doubleI"
+                          ? "โต๊ด"
+                          : "บน"
+                        : selected === "double"
+                        ? "บน/ล่าง"
+                        : selected === "doubleII"
+                        ? "ล่าง"
+                        : selected === "doubleI"
+                        ? "บน"
+                        : "บน"}
+                    </span>
+                    <span className="fw-bold">{amount.toFixed(2)} บาท</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {showDetailVisible && (
+              <div id="show-detail">
+                <h5 className="mb-2">📋 รายการทั้งหมด</h5>
+                {savedEntries.map((entry) => (
+                  <div key={entry.id} className="card mb-2 p-2 shadow-sm">
+                    <div className="d-flex justify-content-between">
+                      <div>
+                        <strong>เลข:</strong> {entry.number} <br />
+                        <strong>ราคา:</strong> {entry.price} บาท{" "}
+                        {/* {entry.double && <span>(บน/ล่าง)</span>} */}
+                        <span>
+                          {entry.number.length === 3
+                            ? entry.selected === "doubleII"
+                              ? "ตรง"
+                              : entry.selected === "doubleI"
+                              ? "โต๊ด"
+                              : "บน"
+                            : entry.selected === "double"
+                            ? "บน/ล่าง"
+                            : entry.selected === "doubleII"
+                            ? "ล่าง/โต๊ด"
+                            : entry.selected === "doubleI"
+                            ? "บน/ตรง"
+                            : "บน"}
+                        </span>
+                      </div>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDelete(entry.id)}
+                      >
+                        ลบ
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* เมนูด้านล่าง */}
+        <nav className="navbar fixed-bottom bg-white border-top shadow-sm">
+          <div className="container d-flex justify-content-around py-2">
+            <button
+              className={`btn d-flex flex-column align-items-center position-relative ${
+                view === "form" ? "active-underline" : ""
+              }`}
+              onClick={() => setView("form")}
+            >
+              <span className="fs-4">
+                <IoAddCircleOutline />
+              </span>
+              <small>เพิ่ม</small>
+            </button>
+            <button
+              className={`btn d-flex flex-column align-items-center position-relative ${
+                view === "list" ? "active-underline" : ""
+              }`}
+              onClick={() => setView("list")}
+            >
+              <span className="fs-4">
+                <IoListCircleOutline />
+              </span>
+              <small>รายการ</small>
             </button>
           </div>
-        </>
-      )}
-
-      {view === "list" && (
-        <>
-          <div className="sticky-top bg-white py-2 px-3 shadow-sm z-3">
-            <h3 className="mb-3 text-center fw-bold">📊 รายการทั้งหมด</h3>
-            <input
-              type="text"
-              className="form-control mb-3"
-              placeholder="ค้นหาเลข"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-            />
-
-            <div className="d-flex justify-content-between mb-3">
-              <button
-                className="btn btn-warning"
-                onClick={() => setShowDetailVisible(!showDetailVisible)}
-              >
-                <small>{showDetailVisible ? "ซ่อน" : "แก้ไข"}</small>
-              </button>
-
-              <button className="btn btn-success" onClick={exportToExcel}>
-                <small>ส่งออก Excel</small>
-              </button>
-              <button className="btn btn-danger" onClick={handleDeleteAll}>
-                <small>ลบทั้งหมด</small>
-              </button>
-            </div>
-          </div>
-
-          {!showDetailVisible && (
-            <ul className="list-group mb-4">
-              {filteredData.map(([num, total]) => (
-                <li
-                  key={num}
-                  className="list-group-item d-flex justify-content-between align-items-center"
-                >
-                  <span>{num}</span>
-                  <span className="fw-bold">{total.toFixed(2)} บาท</span>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {showDetailVisible && (
-            <div id="show-detail">
-              <h5 className="mb-2">📋 รายการทั้งหมด</h5>
-              {savedEntries.map((entry) => (
-                <div key={entry.id} className="card mb-2 p-2 shadow-sm">
-                  <div className="d-flex justify-content-between">
-                    <div>
-                      <strong>เลข:</strong> {entry.number} <br />
-                      <strong>ราคา:</strong> {entry.price} บาท{" "}
-                      {entry.double && <span>(บน/ล่าง)</span>}
-                    </div>
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => handleDelete(entry.id)}
-                    >
-                      ลบ
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* เมนูด้านล่าง */}
-      <nav className="navbar fixed-bottom bg-white border-top shadow-sm">
-        <div className="container d-flex justify-content-around py-2">
-          <button
-            className={`btn d-flex flex-column align-items-center position-relative ${
-              view === "form" ? "active-underline" : ""
-            }`}
-            onClick={() => setView("form")}
-          >
-            <span className="fs-4">
-              <IoAddCircleOutline />
-            </span>
-            <small>เพิ่ม</small>
-          </button>
-          <button
-            className={`btn d-flex flex-column align-items-center position-relative ${
-              view === "list" ? "active-underline" : ""
-            }`}
-            onClick={() => setView("list")}
-          >
-            <span className="fs-4">
-              <IoListCircleOutline />
-            </span>
-            <small>รายการ</small>
-          </button>
-        </div>
-      </nav>
-    </div>
+        </nav>
+      </div>
     </>
   );
 }
