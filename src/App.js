@@ -121,9 +121,37 @@ function App() {
         if (!entry.number || !entry.price) continue;
 
         const priceNum = Number(entry.price);
-        const amount = entry.double ? priceNum * 2 : priceNum;
+        const priceNumI = Number(entry.price);
+        const amount = entry.double ? priceNumI : priceNumI;
+        const amountII = entry.double ? priceNum : priceNum;
 
-        if (entry.selected === "double") {
+        if (entry.selected === "doubleIII") {
+          // บันทึก 2 รายการ
+          const baseEntry = {
+            number: entry.number,
+            price: entry.price,
+            double: entry.double,
+          };
+
+          // 1. บันทึก selected: "doubleIII"
+          await addDoc(collection(db, "lotto"), {
+            ...baseEntry,
+            selected: "doubleIII",
+            amount,
+          });
+
+          // 2. บันทึก selected: "doubleIIII"
+          await addDoc(collection(db, "lotto"), {
+            ...baseEntry,
+            selected: "doubleIIII",
+            amountII,
+          });
+          await addDoc(collection(db, "lotto"), {
+            ...baseEntry,
+            selected: "doubleIIIII",
+            amountII,
+          });
+        } else if (entry.selected === "double") {
           // บันทึก 3 รายการ
           const baseEntry = {
             number: entry.number,
@@ -236,7 +264,6 @@ function App() {
     (entry) => entry.number.length === 3 && entry.number !== ""
   );
 
-
   const groupedDataI = {};
 
   // รวม amount ตามเลขเดียวกัน และกรอง selected ไม่เอา double กับ doubleIII
@@ -269,26 +296,25 @@ function App() {
 
   const groupedData = {};
 
-savedEntries.forEach((entry) => {
-  // ข้าม entry ที่ selected = "double" หรือ "doubleIII"
-  if (entry.selected === "double" || entry.selected === "doubleIII") return;
+  savedEntries.forEach((entry) => {
+    // ข้าม entry ที่ selected = "double" หรือ "doubleIII"
+    if (entry.selected === "double" || entry.selected === "doubleIII") return;
 
-  const nums = entry.number.split(",").map((n) => n.trim());
-  const amount = entry.double ? Number(entry.price) * 2 : Number(entry.price);
+    const nums = entry.number.split(",").map((n) => n.trim());
+    const amount = entry.double ? Number(entry.price) * 2 : Number(entry.price);
 
-  nums.forEach((num) => {
-    const key = `${num}-${entry.selected}`; // ใช้ทั้งเลขและ selected เป็น key
-    if (!groupedData[key]) {
-      groupedData[key] = { number: num, amount: 0, selected: entry.selected };
-    }
-    groupedData[key].amount += amount;
+    nums.forEach((num) => {
+      const key = `${num}-${entry.selected}`; // ใช้ทั้งเลขและ selected เป็น key
+      if (!groupedData[key]) {
+        groupedData[key] = { number: num, amount: 0, selected: entry.selected };
+      }
+      groupedData[key].amount += amount;
+    });
   });
-});
 
-const filteredData = Object.entries(groupedData)
-  .filter(([num]) => num.includes(filterText.trim()))
-  .map(([num, data]) => ({ number: num, ...data }));
-
+  const filteredData = Object.entries(groupedData)
+    .filter(([num]) => num.includes(filterText.trim()))
+    .map(([num, data]) => ({ number: num, ...data }));
 
   if (isLoadScreen) {
     return (
@@ -543,9 +569,9 @@ const filteredData = Object.entries(groupedData)
                   <small>{showDetailVisible ? "ซ่อน" : "แก้ไข"}</small>
                 </button>
 
-                <button className="btn btn-success" onClick={exportToExcel}>
+                {/* <button className="btn btn-success" onClick={exportToExcel}>
                   <small>ส่งออก Excel</small>
-                </button>
+                </button> */}
                 <button className="btn btn-danger" onClick={handleDeleteAll}>
                   <small>ลบทั้งหมด</small>
                 </button>
@@ -562,11 +588,11 @@ const filteredData = Object.entries(groupedData)
                     <span>{number}</span>
                     <span>
                       {number.length === 3
-                        ? selected === "doubleII"
+                        ? selected === "doubleIIII"
                           ? "ตรง"
-                          : selected === "doubleI"
+                          : selected === "doubleIIIII"
                           ? "โต๊ด"
-                          : "บน"
+                          : "โต๊ด"
                         : selected === "double"
                         ? "บน/ล่าง"
                         : selected === "doubleII"
@@ -640,7 +666,7 @@ const filteredData = Object.entries(groupedData)
                   className="list-group-item d-flex justify-content-between align-items-center"
                 >
                   <span>{number}</span>
-                  
+
                   <span className="fw-bold">{amount.toFixed(2)} บาท</span>
                 </li>
               ))}
