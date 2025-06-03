@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/LotterrySUM/static/css/main.5a7a3ae6.css",
-    "main.js": "/LotterrySUM/static/js/main.71a19f12.js",
+    "main.js": "/LotterrySUM/static/js/main.722b7252.js",
     "static/js/453.2482be6b.chunk.js": "/LotterrySUM/static/js/453.2482be6b.chunk.js",
     "static/media/LOTTERRYLOGO.png": "/LotterrySUM/static/media/LOTTERRYLOGO.9e7e59ee19cf3dfc5073.png",
     "index.html": "/LotterrySUM/index.html",
     "main.5a7a3ae6.css.map": "/LotterrySUM/static/css/main.5a7a3ae6.css.map",
-    "main.71a19f12.js.map": "/LotterrySUM/static/js/main.71a19f12.js.map",
+    "main.722b7252.js.map": "/LotterrySUM/static/js/main.722b7252.js.map",
     "453.2482be6b.chunk.js.map": "/LotterrySUM/static/js/453.2482be6b.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.5a7a3ae6.css",
-    "static/js/main.71a19f12.js"
+    "static/js/main.722b7252.js"
   ]
 }
